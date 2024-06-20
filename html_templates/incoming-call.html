@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incoming Call</title>
+    <!-- <link rel="stylesheet" href="styles.css"> -->
+     <style> 
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e8f0fe;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            width: 700px;
+            height: 360px;
+            text-align: center;
+            position: relative;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .settings {
+            position: relative;
+        }
+
+        .settings-icon {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .settings-menu {
+            display: none;
+            position: absolute;
+            top: 30px;
+            left: 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+            width: 100px; /* Adjust width as needed */
+        }
+
+        .settings-menu.show {
+            display: block;
+        }
+
+        .settings-menu a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .settings-menu a:hover {
+            background-color: #f0f2f5;
+        }
+
+
+        .agent-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .call-info {
+            margin-top: 70px;
+            margin-bottom: 20px;
+        }
+
+        .call-info h2 {
+            font-size: 26px;
+            color: #333;
+        }
+
+        .call-info .customer-name {
+            font-weight: bold;
+            /* margin-left: 5px;
+            margin-right: 10px; */
+        }
+
+        .call-actions {
+            margin-top: 50px;
+            margin-bottom: 30px;
+        }
+
+        .call-actions button {
+            width: 120px;
+            padding: 12px;
+            margin: 30px;
+            border: none;
+            border-radius: 4px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .call-actions .accept {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .call-actions .reject {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .call-actions button:hover {
+            transform: scale(1.2);
+        }
+
+        .call-actions button:active {
+            transform: scale(1);
+        }
+
+        /* HTML: <div class="loader"></div> */
+        .call-info .loader {
+        width: 60px;
+        aspect-ratio: 2;
+        --_g: no-repeat radial-gradient(circle closest-side,#000 90%,#0000);
+        background: 
+            var(--_g) 0%   50%,
+            var(--_g) 50%  50%,
+            var(--_g) 100% 50%;
+        background-size: calc(100%/3) 50%;
+        animation: l3 1s infinite linear;
+        }
+        @keyframes l3 {
+            20%{background-position:0%   0%, 50%  50%,100%  50%}
+            40%{background-position:0% 100%, 50%   0%,100%  50%}
+            60%{background-position:0%  50%, 50% 100%,100%   0%}
+            80%{background-position:0%  50%, 50%  50%,100% 100%}
+        }
+        .call-info h2 {
+            font-size: 26px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .call-info .customer-name {
+            font-weight: bold;
+            margin-right: 10px; /* Adjust space between customer name and loader */
+        }
+
+        .call-info .loader-container {
+            display: inline-flex;
+            align-items: center;
+        }
+
+     </style>
+</head>
+<body>
+    <div class="container">
+        <form action="{{ url_for('handle_incoming_call_actions') }}" method="post">
+            <div class="top-bar">
+                <div class="settings">
+                    <img src="{{ url_for('static', filename='settings-icon.png') }}" alt="Settings" class="settings-icon" id="settings-icon">
+                    <div class="settings-menu" id="settings-menu">
+                        <a href="#">extCallId</a>
+                        <a href="#">extension</a>
+                        <a href="#">segment</a>
+                    </div>
+                </div>
+                <div class="agent-name">
+                    {{ agent_name }}
+                </div>
+            </div>
+            <div class="call-info">
+                <h2>Incoming call from&nbsp;<span class=" customer-name">Customer_Name</span><span class="loader-container"><div class="loader"></div></span></h2>
+
+                <!-- <h2>
+                    Call from <span class="customer-name">Customer_Name</span>
+                    <div class="loader"></div>
+                </h2> -->
+            </div>
+            <div class="call-actions">
+                <!-- <button class="accept" onclick="vibrateButton(this)">Accept</button>
+                <button class="reject" onclick="vibrateButton(this)">Reject</button> -->
+                <button type="submit" name="call-actions" value="accept" class="accept" onclick="vibrateButton(this)">Accept</button>
+                <button type="submit" name="call-actions" value="reject" class="reject" onclick="vibrateButton(this)">Reject</button>
+            </div>
+        </form>
+        <form id="no-response-form" action="{{ url_for('no_response_from_agent') }}" method="POST">
+            <input type="hidden" name="message" value="User did not respond in time.">
+        </form>
+    </div>
+    <!-- <script src="script.js"></script> -->
+     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+        const settingsIcon = document.getElementById('settings-icon');
+        const settingsMenu = document.getElementById('settings-menu');
+
+        // Toggle settings menu visibility on settings icon click
+        settingsIcon.addEventListener('click', function() {
+            settingsMenu.classList.toggle('show');
+        });
+
+        // Close the settings menu if user clicks outside of it or clicks an option
+        document.addEventListener('click', function(event) {
+            if (!settingsMenu.contains(event.target) && event.target !== settingsIcon) {
+                settingsMenu.classList.remove('show');
+            }
+        });
+
+        // Close the settings menu when clicking on an option
+        settingsMenu.addEventListener('click', function(event) {
+            // Check if the clicked target is an anchor tag within settings-menu
+            if (event.target.tagName === 'A') {
+                settingsMenu.classList.remove('show');
+            }
+        });
+    });
+
+    function vibrateButton(button) {
+        button.style.animation = "vibrate 0.2s infinite";
+        setTimeout(() => {
+            button.style.animation = "";
+        }, 1000);
+    }
+    window.onload = function() {
+            setTimeout(function() {
+                document.getElementById('no-response-form').submit();
+            }, 30000); // 30 seconds
+        }
+     </script>
+</body>
+</html>

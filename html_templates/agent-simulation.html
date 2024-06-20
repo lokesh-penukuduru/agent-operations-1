@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>agent simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            /* background-color: #f0f2f5; */
+            background-color: #e8f0fe;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .form-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .form-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-container select, .form-container button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 18px;
+        }
+        .form-container select option {
+            font-size: 18px; /* Increase font size of options */
+        }
+        .form-container button {
+            /* background-color: #4CAF50; */
+            background-color: #fab15efb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .form-container button:hover {
+            /* background-color: #45a049; */
+            background-color: #f59f3cfb
+        }
+
+        /* Popup message styles */
+        .popup-message {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* semi-transparent black background */
+            z-index: 9999; /* ensure it's above everything */
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .popup-content span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        .popup-content button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .popup-content button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Agent Simulation</h2>
+        <form action="/incoming-call" method="post">
+            <label for="agent">Select Agent</label>
+            <select id="agent" name="agent" required>
+                <option value="">--Select Agent--</option>
+                <!-- <option value="Agent 1">Agent 1</option>
+                <option value="Agent 2">Agent 2</option>
+                <option value="Agent 3">Agent 3</option> -->
+                {% for agent in agents %}
+                    <option value="{{ agent }}">{{ agent }}</option>
+                {% endfor %}
+            </select>
+            <label for="provider">Select Provider</label>
+            <select id="provider" name="provider" required>
+                <option value="">--Select Provider--</option>
+                <!-- <option value="Provider 1">Provider 1</option>
+                <option value="Provider 2">Provider 2</option>
+                <option value="Provider 3">Provider 3</option> -->
+                {% for provider in providers %}
+                    <option value="{{ provider }}">{{ provider }}</option>
+                {% endfor %}
+            </select>
+            <label for="instance">Select Instance</label>
+            <select id="instance" name="instance" required>
+                <option value="">--Select Instance--</option>
+                <!-- <option value="Instance 1">Instance 1</option>
+                <option value="Instance 2">Instance 2</option>
+                <option value="Instance 3">Instance 3</option> -->
+                {% for instance in instances %}
+                    <option value="{{ instance }}">{{ instance }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Continue</button>
+        </form>
+    </div>
+
+    <!-- Popup message when agent reject call -->
+    <div id="rejectMessage" class="popup-message">
+        <div class="popup-content">
+            <span id="agentRejectMessage"></span>
+            <button id="rejectOkButton">OK</button>
+        </div>
+    </div>
+
+    <!-- Popup message when no response from agent -->
+    <div id="agentNotResponded" class="popup-message">
+        <div class="popup-content">
+            <span id="agentNotRespondedMessage"></span>
+            <button id="noResponseOkButton">OK</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Check if call_rejected flag is set (assuming call_rejected is a JavaScript variable)
+            var callRejected = "{{ call_rejected }}";
+            var isAgentResponded = "{{ is_agent_repsonded }}";
+    
+            if (callRejected === "True") {
+                var agentName = "{{ agent_name }}";
+                var rejectMessageElement = document.getElementById('agentRejectMessage');
+                rejectMessageElement.textContent = agentName + ' has rejected the call.';
+                var rejectMessagePopup = document.getElementById('rejectMessage');
+                rejectMessagePopup.style.display = 'flex';
+    
+                function closeRejectMessage() {
+                    rejectMessagePopup.style.display = 'none';
+                }
+
+                // Attach close function to OK button
+                var rejectOkButton = document.getElementById('rejectOkButton');
+                rejectOkButton.addEventListener('click', closeRejectMessage);
+            }
+
+        if (isAgentResponded === "False") {
+                var agentName = "{{ agent_name }}";
+                var notRespondedMessageElement = document.getElementById('agentNotRespondedMessage');
+                notRespondedMessageElement.textContent = agentName + ' has not responded to the call.';
+                var notRespondedMessagePopup = document.getElementById('agentNotResponded');
+                notRespondedMessagePopup.style.display = 'flex';
+    
+                function closeNotRespondedMessage() {
+                    notRespondedMessagePopup.style.display = 'none';
+                }
+
+                // Attach close function to OK button
+                var noResponseOkButton = document.getElementById('noResponseOkButton');
+                noResponseOkButton.addEventListener('click', closeNotRespondedMessage);
+            }
+        });
+
+    </script>
+</body>
+</html>

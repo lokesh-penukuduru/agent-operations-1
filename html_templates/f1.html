@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form with Select Boxes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .form-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .form-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-container select, .form-container button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 18px;
+        }
+        .form-container select {
+            height: 50px; /* Increase the height of the select box */
+        }
+        .form-container option {
+            font-size: 25px; /* Increase font size of options */
+            padding: 10px; /* Increase padding for better readability */
+        }
+        .form-container button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .form-container button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Select Options</h2>
+        <form action="#" method="post">
+            <label for="agent">Select Agent</label>
+            <select id="agent" name="agent">
+                <option value="">--Select Agent--</option>
+                <option value="agent1">Agent 1</option>
+                <option value="agent2">Agent 2</option>
+                <option value="agent3">Agent 3</option>
+            </select>
+            <label for="provider">Select Provider</label>
+            <select id="provider" name="provider">
+                <option value="">--Select Provider--</option>
+                <option value="provider1">Provider 1</option>
+                <option value="provider2">Provider 2</option>
+                <option value="provider3">Provider 3</option>
+            </select>
+            <label for="instance">Select Instance</label>
+            <select id="instance" name="instance">
+                <option value="">--Select Instance--</option>
+                <option value="instance1">Instance 1</option>
+                <option value="instance2">Instance 2</option>
+                <option value="instance3">Instance 3</option>
+            </select>
+            <button type="submit">Continue</button>
+        </form>
+    </div>
+</body>
+</html>
