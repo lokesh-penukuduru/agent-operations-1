@@ -16,6 +16,8 @@
             margin: 0;
         }
         .form-container {
+            height: 400px;
+            width: 800px;
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
@@ -92,36 +94,42 @@
 <body>
     <div class="form-container">
         <h2>Agent Simulation</h2>
-        <form action="/trigger_incoming_call" method="post">
+        <form action="/triggerIncomingCall" method="post">
             <label for="agent">Select Agent</label>
             <select id="agent" name="agent" required>
                 <option value="">--Select Agent--</option>
                 <!-- <option value="Agent 1">Agent 1</option>
                 <option value="Agent 2">Agent 2</option>
                 <option value="Agent 3">Agent 3</option> -->
-                {% for agent in agents %}
+                {% for agent in availableAgents %}
                     <option value="{{ agent }}">{{ agent }}</option>
                 {% endfor %}
             </select>
-            <label for="provider">Select Provider</label>
+            <label for="provider">Provider</label>
             <select id="provider" name="provider" required>
-                <option value="">--Select Provider--</option>
+                <!-- <option value="">--Select Provider--</option> -->
                 <!-- <option value="Provider 1">Provider 1</option>
                 <option value="Provider 2">Provider 2</option>
                 <option value="Provider 3">Provider 3</option> -->
-                {% for provider in providers %}
+                <option selected="uAudio">
+                    uAudio
+                </option>
+                <!-- {% for provider in providers %}
                     <option value="{{ provider }}">{{ provider }}</option>
-                {% endfor %}
+                {% endfor %} -->
             </select>
-            <label for="instance">Select Instance</label>
+            <label for="instance">Instance</label>
             <select id="instance" name="instance" required>
-                <option value="">--Select Instance--</option>
+                <!-- <option value="">--Select Instance--</option> -->
                 <!-- <option value="Instance 1">Instance 1</option>
                 <option value="Instance 2">Instance 2</option>
                 <option value="Instance 3">Instance 3</option> -->
-                {% for instance in instances %}
+                <option selected="us">
+                    us
+                </option>
+                <!-- {% for instance in instances %}
                     <option value="{{ instance }}">{{ instance }}</option>
-                {% endfor %}
+                {% endfor %} -->
             </select>
             <button type="submit">Continue</button>
         </form>
@@ -145,12 +153,12 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Check if call_rejected flag is set (assuming call_rejected is a JavaScript variable)
-            var callRejected = "{{ call_rejected }}";
-            var isAgentResponded = "{{ is_agent_repsonded }}";
+            // Check if is_call_rejected flag is set (assuming is_call_rejected is a JavaScript variable)
+            var callRejected = "{{ isAgentRejected }}";
+            var isAgentResponded = "{{ isAgentRepsonded }}";
     
             if (callRejected === "True") {
-                var agentName = "{{ agent_name }}";
+                var agentName = "{{ nextAgent }}";
                 var rejectMessageElement = document.getElementById('agentRejectMessage');
                 rejectMessageElement.textContent = agentName + ' has rejected the call.';
                 var rejectMessagePopup = document.getElementById('rejectMessage');
@@ -166,7 +174,7 @@
             }
 
         if (isAgentResponded === "False") {
-                var agentName = "{{ agent_name }}";
+                var agentName = "{{ currentAgent }}";
                 var notRespondedMessageElement = document.getElementById('agentNotRespondedMessage');
                 notRespondedMessageElement.textContent = agentName + ' has not responded to the call.';
                 var notRespondedMessagePopup = document.getElementById('agentNotResponded');

@@ -1,104 +1,130 @@
-import os
+import os,json
 from flask import Flask, render_template, request, url_for, redirect, session
-import requests
+import redis
 
 app = Flask(__name__, template_folder="html_templates")
 app.secret_key = os.urandom(24) 
 
-
+# global redis_client
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+initailAgents = ['agent-1','agent-2','agent-3','agent-4','agent-5','agent-6','agent-7','agent-8','agent-9']
+redis_client.set('availableAgents',json.dumps(initailAgents))
+# edit from here, working fine
 
 @app.route('/')
 def index():
     print("In index")
-    session['agents_list'] = ['Jimmy', 'Ravi', 'Steve', 'Ajay']
-    session['providers_list'] = ['provider1', 'provider2', 'provider3']
-    session['instances_list'] = ['instance1', 'instance2', 'instance3']
+    
+    # session['agents_list'] = ['Jimmy', 'Ravi', 'Steve', 'Ajay']
+    # global availableAgents
+    
+    isAgentRejected = session.pop('isAgentRejected', False) 
+    isAgentRepsonded = session.pop('isAgentRepsonded', True)
+    nextAgent = session.get('nextAgent', "")     
+    return render_template('agent-simulation.html',availableAgents = sorted(json.loads(redis_client.get('availableAgents'))), isAgentRejected = isAgentRejected, nextAgent = nextAgent, isAgentRepsonded = isAgentRepsonded)
 
-    call_rejected = session.pop('call_rejected', False) 
-    is_agent_repsonded = session.pop('is_agent_repsonded', True)
-    agent_name = session.get('agent_name', "")     
-    return render_template('agent-simulation.html',agents = session['agents_list'], providers = session['providers_list'], instances = session['instances_list'], call_rejected = call_rejected, agent_name = agent_name, is_agent_repsonded = is_agent_repsonded)
-
-@app.route('/trigger_incoming_call', methods=['POST'])
-def trigger_incoming_call():
-    print("In trigger incoming call")
-    is_call_transfered = session.get('is_call_transfered',False)
-    if(is_call_transfered):
-        print("in trigger incoming call - transfer case")
-        session['is_call_transfered'] = False
-        agent_name = session['agent_name']
-    else:
-        print("in trigger incoming call - normal case")
-        agent_name = request.form['agent']
-        provider = request.form['provider']
-        instance = request.form['instance']
-        session['agent_name'] = agent_name
-        session['provider'] = provider
-        session['instance'] = instance
-    print(session['agents_list'])
+@app.route('/triggerIncomingCall', methods=['GET', 'POST'])
+def triggerIncomingCall():
+    nextAgent = request.form['agent']
+    provider = request.form['provider']
+    instance = request.form['instance']
+    session['nextAgent'] = nextAgent
+    session['provider'] = provider
+    session['instance'] = instance
     # session['agents_list'].remove(agent_name)
-    customer_name = "Customer_Name"  # Replace this with actual customer name if available
-    return render_template('incoming_call.html', agent_name=agent_name, customer_name=customer_name)
+    customerName = "Customer_Name"  # Replace this with actual customer name if available
+    return render_template('incoming_call.html', nextAgent=nextAgent, customerName=customerName)
 
-@app.route('/no-response', methods=['POST'])
-def no_response_from_agent():
-    # message = request.form['message']
-    session['is_agent_repsonded'] = False
-    # session['agents_list'].append(session['agent_name'])
-    # Handle the no response scenario here, for example, log it or update the UI
+@app.route('/noResponse', methods=['GET', 'POST'])
+def noResponseFromAgent():
+    session['nextAgent'] = ""
+    session['isAgentRepsonded'] = False
+    if(session['isTransferCall']):
+        return redirect(request.referrer)
     return redirect(url_for('index'))
 
-@app.route('/handle_incoming_call_actions', methods=['POST'])
-def handle_incoming_call_actions():
-    print("in handle incoming")
-
+@app.route('/handleIncomingCallActions', methods=['GET', 'POST'])
+def handleIncomingCallActions():
     action = request.form['call-actions']
     if action == 'accept':
-        if session['agent_name'] in session['agents_list']:
-            print("not in list")
-            print(session['agent_name'])
-            session['agents_list'].remove(session['agent_name'])
-        # url = 'https://api-call-preprocessing-mapping-lokesh.us.cloud.uniphoredev.com/'
-        # try:
-        #     response = requests.get(url)
-        #     if response.status_code == 200:
-        #         print('Request to URL successful!')
-        #     else:
-        #         print(f'Request to URL failed with status code: {response.status_code}')
-        # except requests.exceptions.RequestException as e:
-        #     print(f'Request to URL failed: {e}')
-        return render_template('ongoing_call.html', agent_name = session['agent_name'], agents = session['agents_list'])
+        prevAgent=session.get('currentAgent',"") ## in case of conference call, transfer call
+        print("prev agent: ",prevAgent)
+        print("next agent: ", session['nextAgent'])
+        session['currentAgent'] = session['nextAgent']
+        session['nextAgent'] = ""
+        available_agents = json.loads(redis_client.get('availableAgents'))
+        if session['currentAgent'] in available_agents:
+            available_agents.remove(session['currentAgent'])
+            redis_client.set('availableAgents', json.dumps(available_agents))
+        print("available agents :", redis_client.get('availableAgents'))
+        isTransferCall = session.get('isTransferCall', False)
+        print("is transfer call : ", isTransferCall)
+        if(isTransferCall):
+            availableAgents = json.loads(redis_client.get('availableAgents'))
+            availableAgents.append(prevAgent)
+            redis_client.set('availableAgents', json.dumps(availableAgents))                        
+            session['isTransferCall'] = False
+        isConferenceCall = session.get('isConferenceCall', False) 
+        if(isConferenceCall):
+            print("yeahj, confere")
+            try:
+                if(session['currentAgent'] not in session['conferenceAgents']):
+                    session['conferenceAgents'].append(session['currentAgent'])
+                if(prevAgent != "" and prevAgent not in session['conferenceAgents']):
+                    session['conferenceAgents'].append(prevAgent)
+            except Exception:
+                session['conferenceAgents'] = []
+                session['conferenceAgents'].append(session['currentAgent'])
+                if(prevAgent != ""):
+                    session['conferenceAgents'].append(prevAgent)
+            return render_template('ongoing_call.html', isConferenceCall = True, conferenceAgents = session['conferenceAgents'], availableAgents = json.loads(redis_client.get('availableAgents')))
+        availableAgents = json.loads(redis_client.get('availableAgents'))
+        print("available agents", availableAgents)
+        print(session.get('conferenceAgents'," uu"))
+        print(session['currentAgent'])
+        return render_template('ongoing_call.html', isConferenceCall = False, currentAgent = session['currentAgent'], availableAgents = json.loads(redis_client.get('availableAgents')))
     else:
-        session['call_rejected'] = True
+        if(session['isTransferCall']):
+            return redirect(request.referrer)
+        session['isAgentRejected'] = True
         return redirect(url_for('index'))
     
-@app.route('/transfer_call', methods=['POST'])
-def transfer_call_to_another_agent():
-    print("inntransfer call")
-    session['is_call_transfered'] = True
-    if session['agent_name'] in session['agents_list']:
-        session['agents_list'].remove(session['agent_name'])
-    new_agent_name = request.form['agent']
-    session['agents_list'].remove(new_agent_name)
-    session['agent_name'] = new_agent_name
-    # print(f"call transfered to {new_agent_name}")
+@app.route('/transferCall', methods=['GET', 'POST'])
+def transferCallToAnotherAgent():
+    session['isTransferCall'] = True
+    session['nextAgent'] = request.form['agent']
+    print("in transfer next agent: ", session['nextAgent'])
     customer_name = "Customer_Name"
-    return render_template('incoming_call.html', agent_name=new_agent_name, customer_name=customer_name)
-    # return redirect(url_for('trigger_incoming_call'))
-    # # return redirect(url_for('incoming_call'))
-    # if request.method == 'POST':
-    #     session['is_call_transfered'] = True
-    #     new_agent_name = request.form['agent']
-    #     session['agent_name'] = new_agent_name
-    #     return redirect(url_for('incoming_call'))
-    # else:
-    #     # Handle other HTTP methods gracefully, if necessary
-    #     return "Method Not Allowed", 405
-    
-@app.route('/end-call', methods=['POST'])
-def end_call():
-    call_duration = request.form['call_duration']
-    return render_template('call_ended.html', call_duration=call_duration, agent_name = session['agent_name'])
+    return render_template('incoming_call.html', isTransferCall=session['isTransferCall'], currentAgent=session['currentAgent'], nextAgent=session['nextAgent'], customerName=customer_name)
+
+
+@app.route('/conferenceCall', methods=['GET', 'POST'])
+def addAnotherAgentToCall():
+    print("in conference")
+    print("curr ahe: ", session['currentAgent'])
+    session['isConferenceCall'] = True
+    session['nextAgent'] = request.form['agent']
+    print("in conference nextagent ", session['nextAgent'])
+    customer_name = "Customer_Name"
+    return render_template('incoming_call.html', isConferenceCall=session['isConferenceCall'], currentAgent=session['currentAgent'], nextAgent=session['nextAgent'], customerName=customer_name)
+
+@app.route('/endCall', methods=['GET', 'POST'])
+def endCall():
+    try:
+        callDuration = request.form['callDuration']
+        return render_template('call_ended.html', callDuration=callDuration, isConferenceCall = session['isConferenceCall'], conferenceAgents = session['conferenceAgents'], currentAgent = session['currentAgent'])
+    finally:
+        if (session['isConferenceCall']):
+            availableAgents = json.loads(redis_client.get('availableAgents'))
+            availableAgents += session['conferenceAgents']
+            redis_client.set('availableAgents', json.dumps(availableAgents))
+        else:
+            availableAgents = json.loads(redis_client.get('availableAgents'))
+            availableAgents.append(session['currentAgent'])
+            redis_client.set('availableAgents', json.dumps(availableAgents))
+        session.clear()
+        
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -133,7 +133,11 @@
             </div>
             <h1>Call Ended</h1>
             <div class="agent-name">
-                {{agent_name}}
+                {% if isConferenceCall %}
+                    {{ conferenceAgents }}
+                {% else %}
+                    {{currentAgent}}
+                {% endif %}
             </div>
             
         </div>
@@ -144,7 +148,7 @@
             <h2>Phone Number : <span class="phone-number">+91 7812345678</span></h2>
         <!-- </div>
         <div class="call-details"> -->
-            <h2>Call Duration : <span id="call-duration">{{ call_duration }}</span></h2>
+            <h2>Call Duration : <span id="call-duration">{{ callDuration }}</span></h2>
         </div>
         
         <a href="{{ url_for('index') }}" class="button-link">Return to Home</a>

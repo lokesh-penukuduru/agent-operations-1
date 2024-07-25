@@ -13,7 +13,6 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
             position: relative;
         }
 
@@ -55,7 +54,7 @@
             border-radius: 4px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             z-index: 1;
-            width: 100px; /* Adjust width as needed */
+            width: 100px;
         }
 
         .settings-menu.show {
@@ -98,11 +97,11 @@
             font-size: 14px;
         }
 
-
         .call-actions {
+            padding: 10px;
             display: flex;
             justify-content: center;
-            margin-top: 50px;
+            margin-top: 70px;
             margin-bottom: 30px;
         }
 
@@ -110,7 +109,7 @@
             width: 140px;
             height: 50px;
             padding: 18px 4px;
-            margin: 0 10px;
+            margin: 0 25px;
             border: none;
             border-radius: 4px;
             font-size: 18px;
@@ -137,7 +136,8 @@
         }
 
         .end-button {
-            margin-bottom: 20px;
+            margin-top: 30px !important;
+            margin-bottom: 40px;
             padding: 12px 24px;
             background-color: #f44336;
             color: white;
@@ -153,21 +153,18 @@
         }
 
         .agents-list {
-            height: 30px;
-            width: 40px;
             display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translateX(-50%, -50%);
+            position: absolute;
             background-color: #fff;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             z-index: 1;
             width: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 18px;
         }
-
 
         .agents-list.open {
             display: block;
@@ -185,8 +182,99 @@
             transition: background-color 0.2s;
         }
 
+        .agents-list option {
+            padding: 18px;
+            font-size: 20px;
+        }
+
         .agents-list button:hover {
             background-color: #f0f0f0;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0, 0, 0);
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            text-align: center;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .agents-list-modal {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .agents-list-item {
+            padding: 10px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .agents-list-item:hover {
+    background-color: #f0f0f0;
+}
+
+        .confirm-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .confirm-button:hover {
+            background-color: #45a049;
+        }
+
+        /* to blink the duration when call is in hold */
+        @keyframes blink {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .blink {
+            animation: blink 1s infinite;
         }
     </style>
 </head>
@@ -202,7 +290,11 @@
                 </div>
             </div>
             <div class="agent-name">
-                {{agent_name}}
+                {% if isConferenceCall %}
+                    {{ conferenceAgents }}
+                {% else %}
+                    {{ currentAgent }}
+                {% endif %}
             </div>
         </div>
         <div class="call-details">
@@ -212,31 +304,62 @@
         </div>
         <div class="call-actions">
             <button id="hold-resume" class="hold" onclick="toggleHoldResume(this)">HOLD</button>
-            <button class="transfer" onclick="toggleAgentsList()">TRANSFER</button>
-            <button class="conference" onclick="vibrateButton(this)">CONFERENCE</button>
+            <button id="transfer-button" class="transfer" onclick="openModal('transfer-modal')">TRANSFER</button>
+            <button id="conference-button" class="conference" onclick="openModal('conference-modal')">CONFERENCE</button>
         </div>
-        <form id="transfer-call-form" action="/transfer_call" method="post">
-            <select id="agentsList" class="agents-list" name="agent" onchange="this.form.submit()">
-                <option value="">Transfer call to..</option>
-                {% for agent in agents %}
-                    <option value="{{ agent }}">{{ agent }}</option>
-                {% endfor %}
-            </select>
-        </form>
 
-        
+        <!-- Transfer Modal -->
+        <div id="transfer-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('transfer-modal')">&times;</span>
+                <h2>Select Agent to Transfer Call</h2>
+                <form id="transfer-call-form" action="/transferCall" method="post">
+                    <ul id="agents-list" class="agents-list-modal">
+                        {% for agent in availableAgents %}
+                            <li class="agents-list-item" onclick="selectAgent('{{ agent }}', this)">{{ agent }}</li>
+                        {% endfor %}
+                    </ul>
+                    <input type="hidden" id="selected-transfer-agent" name="agent">
+                    <button type="submit" class="confirm-button">Transfer call</button>
+                </form>
+            </div>
+        </div>
+
+
+        <!-- Conference Modal -->
+        <div id="conference-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('conference-modal')">&times;</span>
+                <h2>Select Agent to Add to Conference</h2>
+                <form id="conference-call-form" action="/conferenceCall" method="post">
+                    <ul id="conference-agents-list" class="agents-list-modal">
+                        {% for agent in availableAgents %}
+                            <li class="agents-list-item" onclick="selectAgent('{{ agent }}', this)">{{ agent }}</li>
+                        {% endfor %}
+                    </ul>
+                    <input type="hidden" id="selected-conference-agent" name="agent">
+                    <button type="submit" class="confirm-button">Add to Conference</button>
+                </form>
+            </div>
+        </div>
+
 
         <!-- Call actions section -->
         <div class="call-actions">
-            <form id="end-call-form" action="/end-call" method="post">
-                <input type="hidden" id="call-duration-input" name="call_duration">
+            <form id="end-call-form" action="/endCall" method="post">
+                <input type="hidden" id="call-duration-input" name="callDuration">
                 <button type="submit" class="end-button">END</button>
             </form>
         </div>
+
     </div>
 
     <script>
+
         let startTime = new Date();
+        let isOnHold = false;
+        let pausedDuration = 0;
+        let holdStartTime = null;
 
         document.addEventListener("DOMContentLoaded", function() {
             const settingsIcon = document.getElementById('settings-icon');
@@ -256,7 +379,6 @@
 
             // Close the settings menu when clicking on an option
             settingsMenu.addEventListener('click', function(event) {
-                // Check if the clicked target is an anchor tag within settings-menu
                 if (event.target.tagName === 'A') {
                     settingsMenu.classList.remove('show');
                 }
@@ -264,49 +386,105 @@
         });
 
         function updateCallDuration() {
+
+            if (isOnHold) return;
             let currentTime = new Date();
-            let elapsedTime = new Date(currentTime - startTime);
-            let minutes = elapsedTime.getMinutes().toString().padStart(2, '0');
-            let seconds = elapsedTime.getSeconds().toString().padStart(2, '0');
-            document.getElementById('call-duration').textContent = `${minutes-30}:${seconds}`;
-            document.getElementById('call-duration-input').value = `${minutes-30}:${seconds}`;
+            let elapsedTime = new Date(currentTime - startTime - pausedDuration);
+
+            let hours = elapsedTime.getUTCHours();
+            let minutes = elapsedTime.getUTCMinutes();
+            let seconds = elapsedTime.getUTCSeconds();
+
+            let formattedTime = (hours > 0)
+                ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            // let hours = Math.floor(elapsedTime / 3600000); // Convert elapsed time to hours
+            // let minutes = Math.floor((elapsedTime % 3600000) / 60000); // Convert the remainder to minutes
+            // let seconds = Math.floor((elapsedTime % 60000) / 1000); // Convert the remainder to seconds
+
+
+            // let formattedHours = hours.toString().padStart(2, '0');
+            // let formattedMinutes = minutes.toString().padStart(2, '0');
+            // let formattedSeconds = seconds.toString().padStart(2, '0');
+
+            // document.getElementById('call-duration').textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+            // document.getElementById('call-duration-input').value = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+            document.getElementById('call-duration').textContent = formattedTime;
+            document.getElementById('call-duration-input').value = formattedTime;
         }
 
         setInterval(updateCallDuration, 1000);
 
-        // Toggle HOLD/RESUME button text
         function toggleHoldResume(button) {
+
+            const durationElement = document.getElementById('call-duration');
+
             if (button.textContent === "HOLD") {
                 button.textContent = "RESUME";
-                button.classList.add('enlarged'); // Enlarge the button
-                // Add additional functionality for HOLD action here
+                button.classList.add("enlarged");
+                holdStartTime = new Date();
+                isOnHold = true;
+                durationElement.classList.add('blink');
             } else {
                 button.textContent = "HOLD";
-                button.classList.remove('enlarged'); // Reset the button size
-                // Add additional functionality for RESUME action here
+                button.classList.remove("enlarged");
+                pausedDuration += new Date() - holdStartTime;
+                holdStartTime = null;
+                isOnHold = false;
+                durationElement.classList.remove('blink');
             }
         }
 
-        // Toggle agents list visibility
-        function toggleAgentsList() {
-            const agentsList = document.getElementById('agentsList');
-            agentsList.classList.toggle('open');
+        function openModal(modalId) {
+            var modal = document.getElementById(modalId);
+            modal.style.display = "block";
         }
 
-        // Close agents list when clicking outside of it
-        document.addEventListener('click', function(event) {
-            const agentsList = document.getElementById('agentsList');
-            const transferButton = document.querySelector('.transfer');
+        function closeModal(modalId) {
+            var modal = document.getElementById(modalId);
+            modal.style.display = "none";
+        }
 
-            if (!agentsList.contains(event.target) && event.target !== transferButton) {
-                agentsList.classList.remove('open');
+        function confirmTransfer() {
+            // Implement transfer logic here
+            closeModal('transfer-modal');
+        }
+
+        let selectedAgentElement = null;
+
+        function selectAgent(agentName, element) {
+            // Remove the highlight from the previously selected agent
+            if (selectedAgentElement) {
+                selectedAgentElement.style.backgroundColor = '';
             }
-        });
 
-        // Prevent hiding the agents list when clicking on it
-        document.getElementById('agentsList').addEventListener('click', function(event) {
-            event.stopPropagation(); // Prevent the click event from bubbling up
-        });
+            // Highlight the clicked agent
+            element.style.backgroundColor = '#f0f0f0';
+            selectedAgentElement = element;
+
+            // Set the selected agent value in the hidden input field
+            // document.getElementById('selected-agent').value = agentName;
+            if (document.getElementById('transfer-modal').style.display === 'block') {
+                document.getElementById('selected-transfer-agent').value = agentName;
+            } else if (document.getElementById('conference-modal').style.display === 'block') {
+                document.getElementById('selected-conference-agent').value = agentName;
+            }
+        }
+
+        // Close the modal when the user clicks outside of it
+        window.onclick = function(event) {
+            let modal = document.getElementById('transfer-modal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = "none";
+        }
+
+
     </script>
 </body>
 </html>
