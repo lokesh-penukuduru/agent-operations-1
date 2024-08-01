@@ -1,143 +1,139 @@
-import os,json
-from flask import Flask, render_template, request, url_for, redirect, session
-import redis
+import os
+from flask import Flask, render_template, request, url_for, redirect, session, Response
+
+import logger
 
 app = Flask(__name__, template_folder="html_templates")
 app.secret_key = os.urandom(24) 
 
-# global redis_client
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
-initailAgents = ['agent-1','agent-2','agent-3','agent-4','agent-5','agent-6','agent-7','agent-8','agent-9']
-redis_client.set('availableAgents',json.dumps(initailAgents))
-# edit from here, working fine
+os.environ.setdefault("LOG_LEVEL", "INFO")
+logger = logger.get_logger(__name__)
+
+
 
 @app.route('/')
 def index():
-    print("In index")
-    
-    # session['agents_list'] = ['Jimmy', 'Ravi', 'Steve', 'Ajay']
-    # global availableAgents
-    
+
+    session['availableAgents'] = ['Jimmy', 'Ravi', 'Steve', 'Ajay'] # to update agents list , we should use db/redis
+
     isAgentRejected = session.pop('isAgentRejected', False) 
     isAgentRepsonded = session.pop('isAgentRepsonded', True)
-    nextAgent = session.get('nextAgent', "")     
-    return render_template('agent-simulation.html',availableAgents = sorted(json.loads(redis_client.get('availableAgents'))), isAgentRejected = isAgentRejected, nextAgent = nextAgent, isAgentRepsonded = isAgentRepsonded)
+    nextAgent = session.get('nextAgent', "")
 
-@app.route('/triggerIncomingCall', methods=['GET', 'POST'])
+    if not isAgentRepsonded or isAgentRejected:
+        session['nextAgent'] = ""
+
+    logger.info("Rendering index page")
+
+    return render_template('index.html', availableAgents = session['availableAgents'], isAgentRejected = isAgentRejected, nextAgent = nextAgent, isAgentRepsonded = isAgentRepsonded)
+
+
+
+
+@app.route('/triggerCall', methods=['GET', 'POST'])
 def triggerIncomingCall():
+
     nextAgent = request.form['agent']
     provider = request.form['provider']
     instance = request.form['instance']
+
     session['nextAgent'] = nextAgent
     session['provider'] = provider
     session['instance'] = instance
-    # session['agents_list'].remove(agent_name)
-    customerName = "Customer_Name"  # Replace this with actual customer name if available
+
+
+    customerName = "Test_Customer"  # Replace this with actual customer name if available
+    session['customerName'] = customerName
+
+    logger.info(f"Making call to agent {nextAgent} from the customer {customerName}.")
+
     return render_template('incoming_call.html', nextAgent=nextAgent, customerName=customerName)
+
+
+
 
 @app.route('/noResponse', methods=['GET', 'POST'])
 def noResponseFromAgent():
-    session['nextAgent'] = ""
+
     session['isAgentRepsonded'] = False
-    if(session['isTransferCall']):
-        return redirect(request.referrer)
+    
+    logger.info(f"Agent {session['nextAgent']} has not responded to call from customer {session['customerName']}.")
+
     return redirect(url_for('index'))
 
-@app.route('/handleIncomingCallActions', methods=['GET', 'POST'])
+
+
+
+@app.route('/ongoingcall', methods=['GET', 'POST'])
 def handleIncomingCallActions():
     action = request.form['call-actions']
     if action == 'accept':
-        prevAgent=session.get('currentAgent',"") ## in case of conference call, transfer call
-        print("prev agent: ",prevAgent)
-        print("next agent: ", session['nextAgent'])
+
         session['currentAgent'] = session['nextAgent']
         session['nextAgent'] = ""
-        available_agents = json.loads(redis_client.get('availableAgents'))
-        if session['currentAgent'] in available_agents:
-            available_agents.remove(session['currentAgent'])
-            redis_client.set('availableAgents', json.dumps(available_agents))
-        print("available agents :", redis_client.get('availableAgents'))
-        isTransferCall = session.get('isTransferCall', False)
-        print("is transfer call : ", isTransferCall)
-        if(isTransferCall):
-            availableAgents = json.loads(redis_client.get('availableAgents'))
-            availableAgents.append(prevAgent)
-            redis_client.set('availableAgents', json.dumps(availableAgents))                        
-            session['isTransferCall'] = False
-        isConferenceCall = session.get('isConferenceCall', False) 
-        if(isConferenceCall):
-            print("yeahj, confere")
-            try:
-                if(session['currentAgent'] not in session['conferenceAgents']):
-                    session['conferenceAgents'].append(session['currentAgent'])
-                if(prevAgent != "" and prevAgent not in session['conferenceAgents']):
-                    session['conferenceAgents'].append(prevAgent)
-            except Exception:
-                session['conferenceAgents'] = []
-                session['conferenceAgents'].append(session['currentAgent'])
-                if(prevAgent != ""):
-                    session['conferenceAgents'].append(prevAgent)
-            return render_template('ongoing_call.html', isConferenceCall = True, conferenceAgents = session['conferenceAgents'], availableAgents = json.loads(redis_client.get('availableAgents')))
-        availableAgents = json.loads(redis_client.get('availableAgents'))
-        print("available agents", availableAgents)
-        print(session.get('conferenceAgents'," uu"))
-        print(session['currentAgent'])
-        return render_template('ongoing_call.html', isConferenceCall = False, currentAgent = session['currentAgent'], availableAgents = json.loads(redis_client.get('availableAgents')))
-    else:
-        if(session['isTransferCall']):
-            return redirect(request.referrer)
-        session['isAgentRejected'] = True
-        return redirect(url_for('index'))
+
+        metadata = {
+        'agent' : session['currentAgent'],
+        'provider' : session['provider'],
+        'instance' : session['instance']
+        }
+
+        # call the Platform Load Tester api here by passing metadata
+
+        logger.info(f"Agent {session['currentAgent']} has accepted the call from the customer {session['customerName']}.")
+
+        return render_template('ongoing_call.html', isConferenceCall = False, currentAgent = session['currentAgent'], availableAgents = session['availableAgents'], customerName = session['customerName'])
     
-@app.route('/transferCall', methods=['GET', 'POST'])
-def transferCallToAnotherAgent():
-    session['isTransferCall'] = True
-    session['nextAgent'] = request.form['agent']
-    print("in transfer next agent: ", session['nextAgent'])
-    customer_name = "Customer_Name"
-    return render_template('incoming_call.html', isTransferCall=session['isTransferCall'], currentAgent=session['currentAgent'], nextAgent=session['nextAgent'], customerName=customer_name)
+    else:
+
+        session['isAgentRejected'] = True
+
+        logger.info(f"Agent {session['nextAgent']} has rejected the call from the customer {session['customerName']}.")
+
+        return redirect(url_for('index'))
+
+   
+
+@app.route('/toggleHoldResume', methods=['POST'])
+def toggleHoldResume():
+
+    data = request.json
+    call_status = data.get('status')
+
+    if call_status == 'HOLD':
+        # pause audio streaming here
+
+        logger.info(f"Call of agent {session['currentAgent']} with customer {session['customerName']} is on hold.")
+    elif call_status == 'RESUME':
+        # resume the audio stream
+
+        logger.info(f"Call of agent {session['currentAgent']} with customer {session['customerName']} has resumed.")
+
+    return Response(status=204)
 
 
-@app.route('/conferenceCall', methods=['GET', 'POST'])
-def addAnotherAgentToCall():
-    print("in conference")
-    print("curr ahe: ", session['currentAgent'])
-    session['isConferenceCall'] = True
-    session['nextAgent'] = request.form['agent']
-    print("in conference nextagent ", session['nextAgent'])
-    customer_name = "Customer_Name"
-    return render_template('incoming_call.html', isConferenceCall=session['isConferenceCall'], currentAgent=session['currentAgent'], nextAgent=session['nextAgent'], customerName=customer_name)
+
 
 @app.route('/endCall', methods=['GET', 'POST'])
 def endCall():
     try:
         callDuration = request.form['callDuration']
-        return render_template('call_ended.html', callDuration=callDuration, isConferenceCall = session['isConferenceCall'], conferenceAgents = session['conferenceAgents'], currentAgent = session['currentAgent'])
+
+        isConferenceCall = session.pop('isConferenceCall', False)
+
+        conferenceAgents = session.pop('conferenceAgents', None)
+
+        # call api to stop streaming the audio to audio-connector
+
+        logger.info(f"Call of agent {session['currentAgent']} with customer {session['customerName']} has ended.")
+
+        return render_template('call_ended.html', callDuration=callDuration, isConferenceCall = isConferenceCall, conferenceAgents = conferenceAgents, currentAgent = session['currentAgent'])
     finally:
-        if (session['isConferenceCall']):
-            availableAgents = json.loads(redis_client.get('availableAgents'))
-            availableAgents += session['conferenceAgents']
-            redis_client.set('availableAgents', json.dumps(availableAgents))
-        else:
-            availableAgents = json.loads(redis_client.get('availableAgents'))
-            availableAgents.append(session['currentAgent'])
-            redis_client.set('availableAgents', json.dumps(availableAgents))
         session.clear()
-        
+
+
+
 
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
-
-# url = "https://api.example.com/data"
-# params = {'id': id}
-# response = requests.get(url, params=params)
-# if response.status_code == 200:
-#     return response.json()
-# else:
-#     return None
