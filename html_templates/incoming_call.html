@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Incoming Call</title>
-    <!-- <link rel="stylesheet" href="styles.css"> -->
      <style> 
         body {
             font-family: Arial, sans-serif;
@@ -190,7 +189,7 @@
                 {% elif isConferenceCall %}
                     <h2>Incoming conference call from {{ currentAgent }} with {{ customerName }}</h2>
                 {% else %}
-                    <h2>Incoming call from&nbsp;<span class=" customer-name">customerName</span><span class="loader-container"><div class="loader"></div></span></h2>
+                    <h2>Incoming call from&nbsp;<span class=" customer-name">{{ customerName }}</span><span class="loader-container"><div class="loader"></div></span></h2>
                 {% endif %}
                 <!-- <h2>
                     Call from <span class="customer-name">Customer_Name</span>

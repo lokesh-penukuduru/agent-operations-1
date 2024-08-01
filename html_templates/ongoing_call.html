@@ -298,7 +298,7 @@
             </div>
         </div>
         <div class="call-details">
-            <h2>Customer Name : <span class="customer-name">Customer_Name</span></h2>
+            <h2>Customer Name : <span class="customer-name">{{ customerName }}</span></h2>
             <h2>Phone Number : <span class="phone-number">+91 7812345678</span></h2>
             <h2>Call Duration : <span id="call-duration">00:00</span></h2>
         </div>
@@ -399,26 +399,17 @@
                 ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
                 : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-            // let hours = Math.floor(elapsedTime / 3600000); // Convert elapsed time to hours
-            // let minutes = Math.floor((elapsedTime % 3600000) / 60000); // Convert the remainder to minutes
-            // let seconds = Math.floor((elapsedTime % 60000) / 1000); // Convert the remainder to seconds
 
-
-            // let formattedHours = hours.toString().padStart(2, '0');
-            // let formattedMinutes = minutes.toString().padStart(2, '0');
-            // let formattedSeconds = seconds.toString().padStart(2, '0');
-
-            // document.getElementById('call-duration').textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-            // document.getElementById('call-duration-input').value = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
             document.getElementById('call-duration').textContent = formattedTime;
             document.getElementById('call-duration-input').value = formattedTime;
         }
 
         setInterval(updateCallDuration, 1000);
 
-        function toggleHoldResume(button) {
 
+        function toggleHoldResume(button) {
             const durationElement = document.getElementById('call-duration');
+            let callStatus;
 
             if (button.textContent === "HOLD") {
                 button.textContent = "RESUME";
@@ -426,6 +417,7 @@
                 holdStartTime = new Date();
                 isOnHold = true;
                 durationElement.classList.add('blink');
+                callStatus = 'HOLD';
             } else {
                 button.textContent = "HOLD";
                 button.classList.remove("enlarged");
@@ -433,8 +425,21 @@
                 holdStartTime = null;
                 isOnHold = false;
                 durationElement.classList.remove('blink');
+                callStatus = 'RESUME';
             }
+
+            // Send an AJAX request to the Flask route
+            fetch('/toggleHoldResume', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: callStatus })
+            });
         }
+ 
+
+
 
         function openModal(modalId) {
             var modal = document.getElementById(modalId);

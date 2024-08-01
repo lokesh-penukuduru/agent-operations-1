@@ -128,3 +128,16 @@ def endCall():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+
+
+
+
+# url = "https://api.example.com/data"
+# params = {'id': id}
+# response = requests.get(url, params=params)
+# if response.status_code == 200:
+#     return response.json()
+# else:
+#     return None
