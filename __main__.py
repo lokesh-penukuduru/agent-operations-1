@@ -1,4 +1,4 @@
-import os
+import os,json
 from flask import Flask, render_template, request, url_for, redirect, session, Response
 
 import logger
@@ -36,6 +36,12 @@ def triggerIncomingCall():
     nextAgent = request.form['agent']
     provider = request.form['provider']
     instance = request.form['instance']
+
+    sessions = int(request.form['sessions'])
+    concurrency = int(request.form['concurrency'])
+    sslEnabled = request.form['sslEnabled']
+    sslEnabled =True if sslEnabled.lower() == 'true' else False
+
 
     session['nextAgent'] = nextAgent
     session['provider'] = provider
@@ -78,9 +84,21 @@ def handleIncomingCallActions():
         'instance' : session['instance']
         }
 
+        logger.info(f"Agent {session['currentAgent']} has accepted the call from the customer {session['customerName']}.")
+
+
         # call the Platform Load Tester api here by passing metadata
 
-        logger.info(f"Agent {session['currentAgent']} has accepted the call from the customer {session['customerName']}.")
+        # url = "https://api.lokesh1.uniphore.com"
+        # params = {'metadata': metadata}
+        # response = requests.get(url, params=params)
+        # if response.status_code != 200:
+        #     # redirect to index and pop up message in the index
+
+
+        #TODO : If service is down, handling UI
+
+        
 
         return render_template('ongoing_call.html', isConferenceCall = False, currentAgent = session['currentAgent'], availableAgents = session['availableAgents'], customerName = session['customerName'])
     
